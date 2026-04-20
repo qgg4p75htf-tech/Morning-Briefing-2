@@ -1,0 +1,47 @@
+name: Morning Briefing
+
+on:
+  schedule:
+    # 06:00 UTC = 07:00 CET (winter) / 08:00 CEST (summer — adjust to 05:00 UTC in summer)
+    # To always hit 07:00 Copenhagen time:
+    #   Winter (Oct–Mar): 06:00 UTC
+    #   Summer (Mar–Oct): 05:00 UTC
+    # Set your preferred fixed time below. GitHub Actions runs in UTC.
+    - cron: '0 6 * * 1-5'   # Weekdays at 07:00 CET
+    - cron: '0 6 * * 6,0'   # Weekends at 07:00 CET (remove if you want Mon-Fri only)
+
+  # Allow manual trigger from GitHub Actions UI (useful for testing)
+  workflow_dispatch:
+
+jobs:
+  briefing:
+    name: Generate & send morning briefing
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run briefing
+        run: python briefing.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BOT_TOKEN:         ${{ secrets.BOT_TOKEN }}
+          CHAT_ID:           ${{ secrets.CHAT_ID }}
+
+      - name: Upload log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: briefing-failure-log
+          path: '*.log'
+          retention-days: 7
